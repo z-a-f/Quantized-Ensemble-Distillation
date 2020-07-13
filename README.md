@@ -24,7 +24,7 @@ To work with the current code-base, you should clone [my fork of the PyTorch_CIF
 
 ## TODO list
 
-- [] Create a parameterized `main` file
-- [] Add other YAML model files
-- [] Write a training/evaluation routine for a set of students (not a single one)
-- [] PUT EVERYTHING UNDER CORRECT FOLDERS!!!!
+- [ ] Create a parameterized `main` file
+- [ ] Add other YAML model files
+- [ ] Write a training/evaluation routine for a set of students (not a single one)
+- [ ] PUT EVERYTHING UNDER CORRECT FOLDERS!!!!
