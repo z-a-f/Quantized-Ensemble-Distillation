@@ -48,7 +48,7 @@ def plot(data):
   #   elif isinstance(value, (list, tuple)):
   #     y.append(key)
   # assert len(y) == 0 or len(modes) == 0
-  fig, ax = plt.subplots(1, 2, figsize=(16, 8), sharex=True)
+  fig, ax = plt.subplots(1, 2, figsize=(12, 6), sharex=True)
 
   for mode in modes:
     ax[0].plot(epochs, data[mode]['loss'], label=mode)
@@ -65,10 +65,12 @@ def plot(data):
   ax[1].grid()
   ax[1].legend()
 
-  plt.suptitle(f'Teacher: {data["teacher_name"]}\nStudent: {data["student_name"]}', usetex=False)
+  teacher_name = data['teacher_name'].replace('_', r'\_')
+  student_name = data['student_name'].replace('_', r'\_')
+  plt.suptitle(f'Teacher: {teacher_name}\nStudent: {student_name}')
   plt.tight_layout()
-  plt.subplots_adjust(top=0.9)
-  # plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+  # plt.subplots_adjust(top=0.9)
+  plt.tight_layout(rect=[0, 0.0, 1, 0.93])
 
   return ax
 
