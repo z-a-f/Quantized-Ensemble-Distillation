@@ -1,4 +1,4 @@
-classifier: googlenet.googlenet
+classifier: googlenet
 state_dict: googlenet.pt
 max_epochs: 100
 batch_size: 512
