@@ -23,7 +23,7 @@ def parse_args():
   parser.add_argument('--seed', type=int, default=None, help='Repro seed')
   parser.add_argument('--device', type=str, default=None, help='Force device')
   parser.add_argument('--batch_size', type=int, default=512)
-  parser.add_argument('--save_dir', type=str, default='.')
+  parser.add_argument('--save_to', type=str, default='.')
 
   return parser.parse_args()
 
@@ -134,8 +134,9 @@ def main():
     print(f'\t- Test Loss: {epoch_loss:.2e}, Accuracy: {epoch_accuracy:.2%}')
 
   # Save results
-  results_path = args.save_dir
-  json_path = os.path.join(results_path, 'results_' + student_config['classifier'] + '.json')
+  results_path = args.save_to
+  os.makedirs(results_path, exist_ok=True)
+  json_path = os.path.join(results_path, student_config['classifier'] + '_student.json')
   with open(json_path, 'w') as f:
     json.dump(history, f)
 

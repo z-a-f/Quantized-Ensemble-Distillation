@@ -15,9 +15,9 @@ To work with the current code-base, you should clone [my fork of the PyTorch_CIF
 ## Demo run
 
 ```shell
-$> python cifar10_train_ens.py
+$> python cifar10_train_ens.py config/mobilenetv2.yaml config/mobilenetv2.yaml --seed 0 --save_to results
 # Long training
-$> python plot_json.py results_mobilenetv2.mobilenet_v2.json --save_to imgs/mobilenetv2_self_distill
+$> python plot_json.py results/results_mobilenetv2.mobilenet_v2.json --save_to imgs/mobilenetv2_self_distill
 ```
 
 ![Demo run](imgs/mobilenetv2_self_distill.png)
