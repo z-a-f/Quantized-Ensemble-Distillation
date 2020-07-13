@@ -1,8 +1,9 @@
-
+import argparse
 import os
 from math import ceil
 import sys
 import yaml
+import json
 
 import numpy as np
 import torch
@@ -15,109 +16,131 @@ from cifar10_pretrained import get_model
 from cifar10_run import epoch_self_distillation_train
 from cifar10_run import epoch_self_distillation_test
 
-#######
-# Repro
-np.random.seed(0)
-torch.manual_seed(0)
-torch.backends.cudnn.deterministic = True
-torch.backends.cudnn.benchmark = False
+def parse_args():
+  parser = argparse.ArgumentParser()
+  parser.add_argument('teacher_config_file', type=str, help='YAML configuration file for the teacher')
+  parser.add_argument('student_config_file', type=str, help='YAML configuration file for the student')
+  parser.add_argument('--seed', type=int, default=None, help='Repro seed')
+  parser.add_argument('--device', type=str, default=None, help='Force device')
+  parser.add_argument('--batch_size', type=int, default=512)
+  parser.add_argument('--save_dir', type=str, default='.')
 
-###########
-# Variables
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
-batch_size = 512
+  return parser.parse_args()
 
-train_loader = get_train_loader(batch_size)
-train_length = len(train_loader.dataset)
-test_loader = get_test_loader(batch_size)
-test_length = len(test_loader.dataset)
+def seed_all(seed):
+  if seed is not None:
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
 
-#######
-# Model
-config_file = 'mobilenetv2.yaml'
-with open(config_file, 'r') as f:
-  config = yaml.load(f, Loader=yaml.FullLoader)
+def get_loaders(batch_size):
+  train_loader = get_train_loader(batch_size)
+  train_length = len(train_loader.dataset)
+  test_loader = get_test_loader(batch_size)
+  test_length = len(test_loader.dataset)
 
-teacher_model, teacher_model_name = get_model(config, pretrained=True)
-teacher_model = teacher_model.to(device)
-teacher_model.eval()
+  return (train_loader, train_length), (test_loader, test_length)
 
-##########################
-# Run inference on teacher
-num_correct = 0
-with torch.no_grad():
-  for img, lbl in test_loader:
-    img = img.to(device)
-    lbl = lbl.to(device)
-    pred = teacher_model(img).argmax(-1)
-    num_correct += (pred == lbl).float().sum()
-accuracy = num_correct / test_length
-print(f'===> Accuracy of the loaded teacher model {teacher_model_name} is {accuracy:.2%}')
+def load_config(config_file):
+  with open(config_file, 'r') as f:
+    config = yaml.load(f, Loader=yaml.FullLoader)
+  return config
 
-##############################################
-# Create a student model for self-distillation
-student_model, student_model_name = get_model(config, pretrained=False)
-student_model.train()
-student_model = student_model.to(device)
+def main():
+  args = parse_args()
+  seed_all(args.seed)
+  if args.device is None:
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+  else:
+    device = args.device
+  (train_loader, train_length), (test_loader, test_length) = get_loaders(args.batch_size)
 
-config['scheduler_kwargs']['steps_per_epoch'] = ceil(train_length / batch_size)
-optimizer, scheduler = get_optimizer(model=student_model, config=config)
+  # Teacher
+  teacher_config = load_config(args.teacher_config_file)
+  teacher_model, teacher_model_name = get_model(teacher_config, pretrained=True)
+  teacher_model.to(device)
+  teacher_model.eval()
 
-history = {
-  'teacher_name': config['classifier'],
-  'student_name': config['classifier'],
-  'epochs': [],
-  'train': {
-    'accuracy': [],
-    'loss': []
-  },
-  'test': {
-    'accuracy': [],
-    'loss': []
+  # Run the teacher model to get the baseline accuracy
+  num_correct = 0
+  with torch.no_grad():
+    for img, lbl in test_loader:
+      img = img.to(device)
+      lbl = lbl.to(device)
+      pred = teacher_model(img).argmax(-1)
+      num_correct += (pred == lbl).float().sum()
+  accuracy = num_correct / test_length
+  print(f'===> Accuracy of the loaded teacher model {teacher_model_name} is {accuracy:.2%}')
+
+  # Student
+  student_config = load_config(args.student_config_file)
+  student_model, student_model_name = get_model(student_config, pretrained=False)
+  student_model.to(device)
+  student_model.train()
+
+  student_config['scheduler_kwargs']['steps_per_epoch'] = ceil(train_length / args.batch_size)
+  optimizer, scheduler = get_optimizer(model=student_model, config=student_config)
+
+  # Run the training
+  history = {
+    'teacher_name': teacher_config['classifier'],
+    'student_name': student_config['classifier'],
+    'epochs': [],
+    'train': {
+      'accuracy': [],
+      'loss': []
+    },
+    'test': {
+      'accuracy': [],
+      'loss': []
+    }
   }
-}
 
-###########################
-# Run the self-distillation
-for epoch in range(config['max_epochs']):
-  print(f'Epoch {epoch+1}/{config["max_epochs"]}')
-  history['epochs'].append(epoch)
+  ###########################
+  # Run the self-distillation
+  for epoch in range(student_config['max_epochs']):
+    print(f'Epoch {epoch+1}/{student_config["max_epochs"]}')
+    history['epochs'].append(epoch)
 
-  # ===> Train
-  epoch_loss, epoch_accuracy = epoch_self_distillation_train(
-    teacher_model=teacher_model,
-    student_model=student_model,
-    loader=train_loader,
-    loss_fn=soft_logloss,
-    correct_fn=num_correct_fn,
-    optimizer=optimizer,
-    scheduler=scheduler,
-    device=device
-  )
+    # ===> Train
+    epoch_loss, epoch_accuracy = epoch_self_distillation_train(
+      teacher_model=teacher_model,
+      student_model=student_model,
+      loader=train_loader,
+      loss_fn=soft_logloss,
+      correct_fn=num_correct_fn,
+      optimizer=optimizer,
+      scheduler=scheduler,
+      device=device
+    )
 
-  history['train']['loss'].append(epoch_loss)
-  history['train']['accuracy'].append(epoch_accuracy)
-  print(f'\t- Training Loss: {epoch_loss:.2e}, Accuracy: {epoch_accuracy:.2%}')
+    history['train']['loss'].append(epoch_loss)
+    history['train']['accuracy'].append(epoch_accuracy)
+    print(f'\t- Training Loss: {epoch_loss:.2e}, Accuracy: {epoch_accuracy:.2%}')
 
-  ## ===> Test
-  epoch_loss, epoch_accuracy = epoch_self_distillation_test(
-    teacher_model=teacher_model,
-    student_model=student_model,
-    loader=test_loader,
-    loss_fn=soft_logloss,
-    correct_fn=num_correct_fn,
-    device=device
-  )
+    ## ===> Test
+    epoch_loss, epoch_accuracy = epoch_self_distillation_test(
+      teacher_model=teacher_model,
+      student_model=student_model,
+      loader=test_loader,
+      loss_fn=soft_logloss,
+      correct_fn=num_correct_fn,
+      device=device
+    )
 
-  history['test']['loss'].append(epoch_loss)
-  history['test']['accuracy'].append(epoch_accuracy)
-  print(f'\t- Test Loss: {epoch_loss:.2e}, Accuracy: {epoch_accuracy:.2%}')
+    history['test']['loss'].append(epoch_loss)
+    history['test']['accuracy'].append(epoch_accuracy)
+    print(f'\t- Test Loss: {epoch_loss:.2e}, Accuracy: {epoch_accuracy:.2%}')
 
-########################################
-# Save the results and the student model
-import json
-with open('results_' + config['classifier'] + '.json', 'w') as f:
-  json.dump(history, f)
+  # Save results
+  results_path = args.save_dir
+  json_path = os.path.join(results_path, 'results_' + student_config['classifier'] + '.json')
+  with open(json_path, 'w') as f:
+    json.dump(history, f)
 
-student_save_path = os.path.join(student_save_path, config['classifier']+'_student.pt')
-torch.save(student_model.state_dict(), student_save_path)
+  model_save_path = os.path.join(results_path, student_config['classifier']+'_student.pt')
+  torch.save(student_model.state_dict(), model_save_path)
+
+if __name__ == '__main__':
+  main()

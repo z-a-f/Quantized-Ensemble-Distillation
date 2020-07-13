@@ -1,6 +1,6 @@
-classifier: mobilenetv2.mobilenet_v2
-state_dict: mobilenet_v2.pt
-max_epochs: 1
+classifier: googlenet.googlenet
+state_dict: googlenet.pt
+max_epochs: 100
 batch_size: 512
 optimizer: SGD
 optimizer_kwargs:

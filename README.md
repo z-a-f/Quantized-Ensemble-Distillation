@@ -24,7 +24,21 @@ $> python plot_json.py results_mobilenetv2.mobilenet_v2.json --save_to imgs/mobi
 
 ## TODO list
 
-- [ ] Create a parameterized `main` file
+- [X] Create a parameterized `main` file
 - [ ] Add other YAML model files
+  - [ ] densenet121
+  - [ ] densenet161
+  - [ ] densenet169
+  - [X] googlenet
+  - [ ] inception_v3
+  - [X] mobilenet_v2
+  - [ ] resnet18
+  - [ ] resnet34
+  - [ ] resnet50
+  - [ ] vgg11_bn
+  - [ ] vgg13_bn
+  - [ ] vgg16_bn
+  - [ ] vgg19_bn
 - [ ] Write a training/evaluation routine for a set of students (not a single one)
 - [ ] PUT EVERYTHING UNDER CORRECT FOLDERS!!!!
+- [ ] Make models for QAT
