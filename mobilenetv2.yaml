@@ -1,0 +1,15 @@
+classifier: mobilenetv2.mobilenet_v2
+state_dict: mobilenet_v2.pt
+max_epochs: 100
+batch_size: 512
+optimizer: SGD
+optimizer_kwargs:
+  lr: 0.01
+  weight_decay: 0.01
+  momentum: 0.9
+  nesterov: True
+scheduler: OneCycleLR
+scheduler_kwargs:
+  max_lr: 0.01
+
+
