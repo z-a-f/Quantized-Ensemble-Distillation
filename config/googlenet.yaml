@@ -1,7 +1,7 @@
 classifier: googlenet
 state_dict: googlenet.pt
 max_epochs: 100
-batch_size: 512
+batch_size: 256
 optimizer: SGD
 optimizer_kwargs:
   lr: 0.01
