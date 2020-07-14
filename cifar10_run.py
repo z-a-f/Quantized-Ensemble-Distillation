@@ -14,6 +14,7 @@ def epoch_self_distillation_train(teacher_model, student_model, loader, loss_fn,
     y = y.to(device)
     with torch.no_grad():
       teacher_predictions = teacher_model(x).softmax(-1)
+
     student_logits = student_model(x)
     loss = loss_fn(student_logits, teacher_predictions)
 
