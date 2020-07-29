@@ -1,4 +1,5 @@
 import argparse
+import copy
 import os
 from math import ceil
 import sys
@@ -16,6 +17,8 @@ from cifar10_paths import models_path, state_dict_path
 from cifar10_pretrained import get_model, get_qat_model
 from cifar10_run import epoch_self_distillation_train
 from cifar10_run import epoch_self_distillation_test
+
+import torch.quantization._numeric_suite as ns
 
 def parse_args():
   parser = argparse.ArgumentParser()
@@ -148,9 +151,23 @@ def main():
     print(f'Epoch {epoch+1}/{student_config["max_epochs"]}')
     history['epochs'].append(epoch)
 
-    if args.qat and epoch > 2:
-      student_model.apply(tq.disable_observer)
-      student_model.apply(torch.nn.intrinsic.qat.freeze_bn_stats)
+    if args.qat:
+      pretrain_for = student_config.get('qat', {'pretrain_epochs': 10})
+      pretrain_for = pretrain_for['pretrain_epochs']
+      if epoch < pretrain_for:
+        # Due to a bug in quantization (#41791), we cannot just use QAT on a
+        # newly created model -- need to pretrain it a little before enabling
+        # the QAT.
+        student_model.apply(tq.disable_fake_quant)
+        student_model.apply(tq.disable_observer)
+        student_model.apply(torch.nn.intrinsic.qat.update_bn_stats)
+      elif pretrain_for <= epoch <= pretrain_for + 2:  # Calibrate
+        student_model.apply(tq.enable_fake_quant)
+        student_model.apply(tq.enable_observer)
+        student_model.apply(torch.nn.intrinsic.qat.update_bn_stats)
+      elif epoch > pretrain_for + 2:  # Start QAT
+        student_model.apply(tq.disable_observer)
+        student_model.apply(torch.nn.intrinsic.qat.freeze_bn_stats)
 
     # ===> Train
     epoch_loss, epoch_accuracy = epoch_self_distillation_train(
@@ -168,8 +185,9 @@ def main():
     history['train']['accuracy'].append(epoch_accuracy)
     print(f'\t- Training Loss: {epoch_loss:.2e}, Accuracy: {epoch_accuracy:.2%}')
 
-    if args.qat:
-      student_model_ = tq.convert(student_model.eval(), inplace=False)
+    if False and args.qat:
+      student_model_ = copy.deepcopy(student_model).to('cpu')
+      tq.convert(student_model_.eval(), inplace=True)
     else:
       student_model_ = student_model
     ## ===> Test
@@ -191,7 +209,7 @@ def main():
   # Save results
   os.makedirs(args.save_to, exist_ok=True)
   file_name = make_student_save_name(args.save_to, student_config)
-  file_name += ('_qat' if args.qat else ' ')
+  file_name += ('_qat' if args.qat else '')
   json_path = file_name + '.json'
   with open(json_path, 'w') as f:
     json.dump(history, f)

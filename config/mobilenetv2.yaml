@@ -1,6 +1,6 @@
 classifier: mobilenet_v2
 state_dict: mobilenet_v2.pt
-max_epochs: 1
+max_epochs: 100
 batch_size: 512
 optimizer: SGD
 optimizer_kwargs:
@@ -11,5 +11,5 @@ optimizer_kwargs:
 scheduler: OneCycleLR
 scheduler_kwargs:
   max_lr: 0.01
-
-
+qat:
+  pretrain_epochs: 40
