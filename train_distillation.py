@@ -119,8 +119,8 @@ def main():
       student_num_correct += (student_pred == lbl).float().sum()
   teacher_accuracy = (teacher_num_correct / test_length).item()
   student_accuracy = (student_num_correct / test_length).item()
-  print(f'===> Accuracy of the teacher model {teacher_model_name} is {teacher_accuracy:.2%}')
-  print(f'===> Accuracy of the student model {student_model_name} is {student_accuracy:.2%}')
+  print(f'===> Initial accuracy of the teacher model {teacher_model_name} is {teacher_accuracy:.2%}')
+  print(f'===> Initial accuracy of the student model {student_model_name} is {student_accuracy:.2%}')
 
   ############
   # Optimizers

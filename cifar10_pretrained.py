@@ -7,7 +7,6 @@ import torch
 from cifar10_paths import models_path, state_dict_path
 
 def get_model(config, pretrained=False):
-  sys.path.append(models_path)
   import cifar10_models
 
   model_name = config['classifier']
