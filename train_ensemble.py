@@ -39,12 +39,12 @@ def load_config(config_file):
   return config
 
 def ensemble_loss_fn(loss_fn):
-  def _ensemble_loss_fn(y_hat_list, y):
+  def _loss_fn(y_hat_list, y):
     losses = []
     for y_hat in y_hat_list:
       losses.append(loss_fn(y_hat, y))
     return sum(losses) / len(losses)
-  return _ensemble_loss_fn
+  return _loss_fn
 
 
 #########

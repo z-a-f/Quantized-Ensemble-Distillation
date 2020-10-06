@@ -51,7 +51,7 @@ class LeNet5Ensemble(nn.Module):
     self.models = nn.ModuleList()
     self.reduce_fn = reduce_fn
     if self.reduce_fn is None:
-      self.reduce_fn = lambda x: torch.stack(x, 0).mean(0)
+      self.reduce_fn = lambda x: torch.stack(x, 0).max(0)[0]
     for idx in range(ensemble_size):
       self.models.append(LeNet5())
 
